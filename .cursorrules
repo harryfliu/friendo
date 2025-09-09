@@ -1,0 +1,37 @@
+---
+
+# `/.cursorrules`
+
+```txt
+# Friendo Rules (v1.4)
+
+- Respect /docs/prd.md.
+- Keep diffs ≤150 LOC and scoped to listed files.
+- Always add/update tests for logic or layout changes.
+- Use strict TypeScript (no implicit any).
+- UI stack: Next.js App Router, Tailwind, shadcn/ui, Framer Motion.
+- Vis stack: D3 for scales, zoom, force; render in SVG.
+- State: Zustand (UI), TanStack Query (server).
+- Auth: Auth.js; DB: Prisma + Postgres (Supabase).
+- Never hardcode secrets; use .env + .env.example validated via Zod.
+- Animations: prefer spring {stiffness:220, damping:26, mass:0.9}; fallback ease cubic-bezier(0.22,1,0.36,1).
+- Orbit rules:
+  - Min rings = 10, max = 20.
+  - Intervals = 0.5 score units.
+  - Adaptive spacing = quantiles; smooth thresholds with alpha=0.28.
+- Rating rules:
+  - Binary-search insertion with swipe comparator.
+  - Max comparisons = min(ceil(log2(N))+1, 9).
+  - Normalize scores to 0.0–10.0; apply moving-average smoothing.
+- UX rules:
+  - Mobile gestures: swipe rating, pinch-zoom map.
+  - Desktop shortcuts: ← less, → more, Enter next, Esc cancel.
+  - Deterministic icon progression + warm hues by closeness.
+Process:
+1. Summarize plan, list files touched.
+2. Implement minimal vertical slice.
+3. Run tests, paste results, list risks.
+Guardrails:
+- Don’t refactor unrelated files.
+- Don’t modify lint/format config.
+- Keep orbit logic isolated in /lib/orbit and rating logic in /lib/rating.
