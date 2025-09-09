@@ -30,18 +30,19 @@ export async function insertWithComparisons({
     pivotsVisited.push(pivot.id);
     const result = await compare(candidate, pivot);
     comparisons++;
-    if (result < 0) hi = mid - 1;
-    else lo = mid + 1;
+    if (result < 0) lo = mid + 1;  // candidate is less close, search right half
+    else hi = mid - 1;              // candidate is more close, search left half
   }
 
   const insertAt = lo;
   const newSorted = [...sorted];
   newSorted.splice(insertAt, 0, candidate);
 
-  // Normalize closeness scores 0..10
+  // Calculate closeness based on position in sorted array (higher position = closer)
   const n = newSorted.length;
   newSorted.forEach((f, i) => {
-    f.closeness = n > 1 ? (10 * i) / (n - 1) : 10.0;
+    // Position 0 = closest (highest closeness), position n-1 = furthest (lowest closeness)
+    f.closeness = n > 1 ? 10 - (10 * i) / (n - 1) : 10.0;
   });
 
   // Apply moving-average smoothing for stability
@@ -87,9 +88,21 @@ export function getIconConfig(closeness: number) {
   const iconKey = generateIconKey(closeness);
   const [shape, color] = iconKey.split('-');
   
+  // Map color names to Tailwind color classes
+  const colorMap: Record<string, string> = {
+    'blue': 'blue',
+    'teal': 'teal', 
+    'green': 'green',
+    'yellow-green': 'yellow',
+    'orange': 'orange',
+    'red': 'red'
+  };
+  
+  const tailwindColor = colorMap[color] || 'gray';
+  
   return {
     shape: shape as 'dot' | 'square' | 'hexagon' | 'flower' | 'star8' | 'star12',
-    color,
+    color: tailwindColor,
     size: Math.max(12, Math.min(24, 12 + (closeness / 10) * 12)) // 12-24px based on closeness
   };
 }

@@ -18,6 +18,15 @@ export function getClosenessColor(closeness: number): string {
   return 'text-red-500';
 }
 
+export function getClosenessBarColor(closeness: number): string {
+  if (closeness < 2) return '#3b82f6'; // blue-500
+  if (closeness < 4) return '#14b8a6'; // teal-500
+  if (closeness < 6) return '#22c55e'; // green-500
+  if (closeness < 7.5) return '#eab308'; // yellow-500
+  if (closeness < 9) return '#f97316'; // orange-500
+  return '#ef4444'; // red-500
+}
+
 export function generateId(): string {
   return Math.random().toString(36).substr(2, 9);
 }

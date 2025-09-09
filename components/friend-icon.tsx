@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { getIconConfig } from '@/lib/rating/insert'
 import type { FriendWithPosition } from '@/lib/types'
@@ -12,12 +13,55 @@ interface FriendIconProps {
 }
 
 export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
-  const iconConfig = getIconConfig(friend.closeness)
+  const [isHovered, setIsHovered] = useState(false)
+  
+  // Use the stored iconKey instead of recalculating from closeness
+  const iconKey = friend.iconKey
+  const [shape, color] = iconKey.split('-')
+  
+  // Map color names to Tailwind color classes
+  const colorMap: Record<string, string> = {
+    'blue': 'blue',
+    'teal': 'teal', 
+    'green': 'green',
+    'yellow-green': 'yellow',
+    'orange': 'orange',
+    'red': 'red'
+  }
+  
+  const tailwindColor = colorMap[color] || 'gray'
+  
+  const iconConfig = {
+    shape: shape as 'dot' | 'square' | 'hexagon' | 'flower' | 'star8' | 'star12',
+    color: tailwindColor,
+    size: Math.max(12, Math.min(24, 12 + (friend.closeness / 10) * 12))
+  }
 
   const getIconElement = () => {
     const { shape, color, size } = iconConfig
-    const colorClass = `text-${color}-500`
     const sizePx = `${size}px`
+    
+    // Use direct color values instead of Tailwind classes
+    const colorMap: Record<string, string> = {
+      'blue': '#3b82f6',    // blue-500
+      'teal': '#14b8a6',    // teal-500
+      'green': '#22c55e',   // green-500
+      'yellow': '#eab308',  // yellow-500
+      'orange': '#f97316',  // orange-500
+      'red': '#ef4444'      // red-500
+    }
+    
+    const fillColor = colorMap[color] || '#6b7280' // gray-500 fallback
+    
+    console.log('🎨 Icon debug:', { 
+      friendName: friend.name, 
+      closeness: friend.closeness,
+      iconKey: friend.iconKey,
+      shape, 
+      color, 
+      fillColor, 
+      size 
+    })
 
     switch (shape) {
       case 'dot':
@@ -26,8 +70,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
             cx="0"
             cy="0"
             r={size / 2}
-            className={colorClass}
-            fill="currentColor"
+            fill={fillColor}
           />
         )
       
@@ -39,8 +82,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
             width={size}
             height={size}
             rx={size / 6}
-            className={colorClass}
-            fill="currentColor"
+            fill={fillColor}
           />
         )
       
@@ -54,14 +96,13 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
         return (
           <polygon
             points={hexPoints}
-            className={colorClass}
-            fill="currentColor"
+            fill={fillColor}
           />
         )
       
       case 'flower':
         return (
-          <g className={colorClass} fill="currentColor">
+          <g fill={fillColor}>
             {Array.from({ length: 8 }, (_, i) => {
               const angle = (i * Math.PI) / 4
               const x = (size / 2) * Math.cos(angle)
@@ -90,8 +131,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
         return (
           <polygon
             points={star8Points}
-            className={colorClass}
-            fill="currentColor"
+            fill={fillColor}
           />
         )
       
@@ -106,8 +146,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
         return (
           <polygon
             points={star12Points}
-            className={colorClass}
-            fill="currentColor"
+            fill={fillColor}
           />
         )
       
@@ -117,8 +156,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
             cx="0"
             cy="0"
             r={size / 2}
-            className="text-gray-500"
-            fill="currentColor"
+            fill="#6b7280"
           />
         )
     }
@@ -143,19 +181,25 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
           damping: ANIMATION_CONFIG.spring.damping,
           mass: ANIMATION_CONFIG.spring.mass,
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onClick={onClick}
       >
         {getIconElement()}
         
-        {/* Friend name label */}
+        {/* Friend name label - shows on hover or when selected */}
         <motion.text
           x="0"
           y={iconConfig.size / 2 + 16}
           textAnchor="middle"
           className="text-xs font-medium fill-foreground"
           initial={{ opacity: 0 }}
-          animate={{ opacity: isSelected ? 1 : 0 }}
+          animate={{ opacity: (isSelected || isHovered) ? 1 : 0 }}
           transition={{ duration: 0.2 }}
+          style={{
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+            pointerEvents: 'none'
+          }}
         >
           {friend.name}
         </motion.text>

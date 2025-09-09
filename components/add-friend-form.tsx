@@ -37,8 +37,8 @@ export function AddFriendForm({ onCancel }: AddFriendFormProps) {
         id: Math.random().toString(36).substr(2, 9),
         userId: 'user1',
         name: formData.name.trim(),
-        closeness: isFirstFriend ? 9.5 : 5.0, // First friend gets highest closeness
-        iconKey: isFirstFriend ? 'star12-red' : 'hexagon-green',
+        closeness: isFirstFriend ? 5.0 : 5.0, // All friends start with baseline score
+        iconKey: isFirstFriend ? 'hexagon-green' : 'hexagon-green',
         city: formData.city.trim() || undefined,
         state: formData.state.trim() || undefined,
         country: formData.country.trim() || undefined,

@@ -13,10 +13,12 @@ export function Header() {
   }
 
   const handleReset = () => {
+    console.log('🎯 Header reset handler called')
     resetFriends()
-    // Clear the demo flag so demo data can be reloaded if needed
+    // Set a flag that the user has manually reset, so demo data won't reload
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('friendo-demo-loaded')
+      localStorage.setItem('friendo-has-been-reset', 'true')
+      console.log('🏷️ Set has-been-reset flag')
     }
   }
 

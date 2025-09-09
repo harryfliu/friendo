@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { Friend, RingLayout, FriendWithPosition, ThemeConfig, AnimationConfig } from './types';
+import { generateIconKey } from './rating/insert';
 
 interface OrbitState {
   // Data
@@ -83,12 +84,32 @@ export const useOrbitStore = create<OrbitState>()(
         )
       })),
       
-      removeFriend: (id) => set((state) => ({
-        friends: state.friends.filter(f => f.id !== id),
-        selectedFriend: state.selectedFriend?.id === id ? null : state.selectedFriend
-      })),
+      removeFriend: (id) => set((state) => {
+        const remainingFriends = state.friends.filter(f => f.id !== id);
+        
+        // Recalculate scores for remaining friends using relative scoring
+        const friendsWithRecalculatedScores = remainingFriends.map((friend, index) => {
+          const totalFriends = remainingFriends.length;
+          // Scale from 0-10 where index 0 (closest) gets 10, index n-1 (furthest) gets 0
+          const relativeScore = totalFriends > 1 
+            ? (totalFriends - 1 - index) / (totalFriends - 1) * 10
+            : 10; // If only one friend left, they get 10
+          
+          return {
+            ...friend,
+            closeness: relativeScore,
+            iconKey: generateIconKey(relativeScore)
+          };
+        });
+        
+        return {
+          friends: friendsWithRecalculatedScores,
+          selectedFriend: state.selectedFriend?.id === id ? null : state.selectedFriend
+        };
+      }),
       
       resetFriends: () => {
+        console.log('🔄 Reset button clicked - clearing friends')
         set((state) => ({
           friends: [],
           selectedFriend: null,
@@ -97,10 +118,12 @@ export const useOrbitStore = create<OrbitState>()(
         
         // Clear the persisted data from localStorage
         localStorage.removeItem('orbit-store')
+        console.log('🗑️ Cleared orbit-store from localStorage')
         
         // Clear the resetting state after a short delay
         setTimeout(() => {
           set({ isResetting: false })
+          console.log('✅ Reset animation completed')
         }, 500)
       },
       

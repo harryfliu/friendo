@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, PanInfo } from 'framer-motion'
 import { useOrbitStore } from '@/lib/store'
-import { insertWithComparisons } from '@/lib/rating/insert'
+import { insertWithComparisons, generateIconKey } from '@/lib/rating/insert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
@@ -27,52 +27,69 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
   const [maxComparisons, setMaxComparisons] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [swipeOffset, setSwipeOffset] = useState(0)
-
-  // Initialize rating process
-  useEffect(() => {
-    // Filter out the candidate from friends to avoid self-comparison
-    const existingFriends = friends.filter(friend => friend.id !== candidate.id)
-    const sortedFriends = [...existingFriends].sort((a, b) => b.closeness - a.closeness)
-    const max = Math.min(Math.ceil(Math.log2(sortedFriends.length)) + 1, 9)
-    setMaxComparisons(max)
-    updateRatingProgress(0, max)
-    
-    if (sortedFriends.length > 0) {
-      setCurrentPivot(sortedFriends[Math.floor(sortedFriends.length / 2)])
-    }
-  }, [friends, candidate.id, updateRatingProgress])
+  const [binarySearchState, setBinarySearchState] = useState<{
+    lo: number
+    hi: number
+    sortedFriends: Friend[]
+  } | null>(null)
 
   const handleComparison = async (result: -1 | 1) => {
-    if (!currentPivot || isProcessing) return
+    if (!currentPivot || isProcessing || !binarySearchState) return
 
     setIsProcessing(true)
     setComparisons(prev => prev + 1)
     updateRatingProgress(comparisons + 1, maxComparisons)
 
     try {
-      // Filter out the candidate from friends to avoid self-comparison
-      const existingFriends = friends.filter(friend => friend.id !== candidate.id)
-      const sortedFriends = [...existingFriends].sort((a, b) => b.closeness - a.closeness)
-      const { newSorted } = await insertWithComparisons({
-        sorted: sortedFriends,
-        candidate,
-        compare: async (candidate, pivot) => {
-          // Simulate user comparison - in real app this would be the actual comparison
-          return result
-        },
-        maxComparisons,
-      })
-
-      // Add the candidate back to the sorted list
-      const finalFriends = [...newSorted, candidate]
-      setFriends(finalFriends)
+      const { lo, hi, sortedFriends } = binarySearchState
+      const mid = Math.floor((lo + hi) / 2)
       
-      // Move to next comparison or finish
-      if (comparisons + 1 < maxComparisons) {
-        const nextPivot = newSorted[Math.floor(newSorted.length / 2)]
-        setCurrentPivot(nextPivot)
+      // Update binary search bounds based on comparison result
+      let newLo = lo
+      let newHi = hi
+      
+      if (result < 0) {
+        // candidate is less close, search right half
+        newLo = mid + 1
       } else {
+        // candidate is more close, search left half  
+        newHi = mid - 1
+      }
+
+      // Check if we're done with binary search
+      if (newLo > newHi || comparisons + 1 >= maxComparisons) {
+        // Insert candidate at the correct position
+        const insertAt = newLo
+        const newSorted = [...sortedFriends]
+        newSorted.splice(insertAt, 0, candidate)
+        
+        // Apply Beli-style relative scoring: closest friend gets 10, others scale down
+        const friendsWithRelativeScores = newSorted.map((friend, index) => {
+          const totalFriends = newSorted.length
+          // Scale from 0-10 where index 0 (closest) gets 10, index n-1 (furthest) gets 0
+          const relativeScore = totalFriends > 1 
+            ? (totalFriends - 1 - index) / (totalFriends - 1) * 10
+            : 10 // If only one friend, they get 10
+          
+          return {
+            ...friend,
+            closeness: relativeScore,
+            iconKey: generateIconKey(relativeScore)
+          }
+        })
+        
+        // Update friends and finish
+        setFriends(friendsWithRelativeScores)
         endRating()
+      } else {
+        // Continue with next comparison
+        const nextPivot = sortedFriends[Math.floor((newLo + newHi) / 2)]
+        setCurrentPivot(nextPivot)
+        setBinarySearchState({
+          lo: newLo,
+          hi: newHi,
+          sortedFriends
+        })
       }
     } catch (error) {
       console.error('Rating error:', error)
@@ -98,6 +115,45 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
   const handleSwipeMove = (event: any, info: PanInfo) => {
     setSwipeOffset(Math.max(-100, Math.min(100, info.offset.x)))
   }
+
+  // Initialize rating process
+  useEffect(() => {
+    // Filter out the candidate from friends to avoid self-comparison
+    const existingFriends = friends.filter(friend => friend.id !== candidate.id)
+    const sortedFriends = [...existingFriends].sort((a, b) => b.closeness - a.closeness)
+    const max = Math.min(Math.ceil(Math.log2(sortedFriends.length)) + 1, 9)
+    setMaxComparisons(max)
+    updateRatingProgress(0, max)
+    
+    if (sortedFriends.length > 0) {
+      const lo = 0
+      const hi = sortedFriends.length - 1
+      const mid = Math.floor((lo + hi) / 2)
+      
+      setCurrentPivot(sortedFriends[mid])
+      setBinarySearchState({
+        lo,
+        hi,
+        sortedFriends
+      })
+    }
+  }, [friends, candidate.id, updateRatingProgress])
+
+  // Handle keyboard events
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (isProcessing || !currentPivot) return
+      
+      if (event.key === 'ArrowLeft') {
+        handleComparison(-1)
+      } else if (event.key === 'ArrowRight') {
+        handleComparison(1)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [isProcessing, currentPivot, handleComparison])
 
   if (!currentPivot) {
     return (
@@ -141,49 +197,44 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground">
-              swipe or use buttons to compare
+              click on the friend you're closer to, or use arrow keys
             </p>
           </CardContent>
         </Card>
 
-        {/* Comparison cards */}
-        <div className="space-y-4">
-          {/* Candidate card */}
+        {/* Comparison cards - side by side */}
+        <div className="flex items-center justify-center space-x-8 my-8">
+          {/* Left friend - Candidate */}
           <motion.div
-            className="rating-card rounded-lg p-4 border-2 border-primary cursor-pointer"
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            onDrag={handleSwipeMove}
-            onDragEnd={handleSwipe}
+            className="rating-card rounded-lg p-6 border-2 border-primary cursor-pointer bg-primary/5 hover:bg-primary/10 transition-colors"
             onClick={() => handleComparison(1)}
-            style={{
-              '--swipe-x': `${swipeOffset}px`,
-            } as React.CSSProperties}
-            animate={{
-              x: swipeOffset,
-              opacity: 1 - Math.abs(swipeOffset) / 100,
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
           >
             <div className="text-center">
-              <h3 className="text-xl font-bold mb-2">{candidate.name}</h3>
+              <h3 className="text-2xl font-bold mb-2">{candidate.name}</h3>
               <p className="text-sm text-muted-foreground">new friend</p>
             </div>
           </motion.div>
 
-          {/* vs */}
-          <div className="text-center text-muted-foreground font-medium">vs</div>
+          {/* VS divider */}
+          <div className="text-center text-muted-foreground font-bold text-lg">VS</div>
 
-          {/* Pivot card */}
+          {/* Right friend - Existing */}
           <motion.div
-            className="rating-card rounded-lg p-4 border-2 border-secondary cursor-pointer"
+            className="rating-card rounded-lg p-6 border-2 border-secondary cursor-pointer bg-secondary/5 hover:bg-secondary/10 transition-colors"
             onClick={() => handleComparison(-1)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
           >
             <div className="text-center">
-              <h3 className="text-xl font-bold mb-2">{currentPivot.name}</h3>
+              <h3 className="text-2xl font-bold mb-2">{currentPivot.name}</h3>
               <p className="text-sm text-muted-foreground">
                 closeness: {currentPivot.closeness.toFixed(1)}
               </p>
@@ -191,28 +242,6 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
           </motion.div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex justify-center space-x-4 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => handleComparison(-1)}
-            disabled={isProcessing}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>less close</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            onClick={() => handleComparison(1)}
-            disabled={isProcessing}
-            className="flex items-center space-x-2"
-          >
-            <span>more close</span>
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
 
         {/* Cancel button */}
         <div className="text-center mt-4">

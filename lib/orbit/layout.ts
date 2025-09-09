@@ -51,22 +51,19 @@ export function computeRings(
       )
     : thresholds;
 
-  // Calculate radii with adaptive spacing
+  // Calculate radii with proper distribution
   const centerX = width / 2;
   const centerY = height / 2;
   const maxRadius = Math.min(centerX, centerY) - 40; // 40px padding
-  
-  // Base radius calculation with quantile-based spacing
-  const baseRadius = 28; // minimum spacing
-  const maxSpacing = 72; // maximum spacing
+  const minRadius = 28; // minimum radius for innermost ring
   
   const radii: number[] = [];
   for (let i = 0; i < thresholds.length; i++) {
-    const threshold = smoothedThresholds[i];
-    const quantileIndex = quantiles.findIndex(q => threshold <= q);
-    const spacingFactor = quantileIndex >= 0 ? (quantileIndex + 1) / quantiles.length : 1;
-    const spacing = Math.min(maxSpacing, baseRadius + spacingFactor * (maxSpacing - baseRadius));
-    radii.push(Math.min(maxRadius, baseRadius + i * spacing));
+    // Use logarithmic distribution to spread rings more evenly
+    // This ensures each ring has a distinct radius
+    const progress = i / (thresholds.length - 1); // 0 to 1
+    const radius = minRadius + (maxRadius - minRadius) * Math.pow(progress, 0.7); // 0.7 for slight curve
+    radii.push(radius);
   }
 
   return {
@@ -88,9 +85,22 @@ export function computeFriendPositions(
   // Group friends by ring
   const friendsByRing: { [ringIndex: number]: Array<{ closeness: number; id: string }> } = {};
   
+  console.log('🔍 Ring assignment debug:', {
+    thresholds: ringLayout.thresholds,
+    radii: ringLayout.radii,
+    friends: friends.map(f => ({ name: f.id, closeness: f.closeness }))
+  });
+
   friends.forEach(friend => {
-    const ringIndex = ringLayout.thresholds.findIndex(threshold => friend.closeness <= threshold);
-    const actualRing = ringIndex === -1 ? ringLayout.thresholds.length - 1 : ringIndex;
+    // Find the ring based on closeness: higher closeness = inner rings (lower index)
+    // Map closeness score to ring index (0-10 scale to 0-19 rings, inverted)
+    const normalizedCloseness = Math.max(0, Math.min(10, friend.closeness))
+    const ringIndex = Math.floor(-2 * normalizedCloseness + 19)
+    
+    // Ensure we don't exceed available rings
+    const actualRing = Math.min(Math.max(0, ringIndex), ringLayout.radii.length - 1);
+    
+    console.log(`📍 Friend ${friend.id} (closeness: ${friend.closeness}) -> ring ${actualRing}`);
     
     
     if (!friendsByRing[actualRing]) {
@@ -105,21 +115,39 @@ export function computeFriendPositions(
   Object.entries(friendsByRing).forEach(([ringIndexStr, ringFriends]) => {
     const ringIndex = parseInt(ringIndexStr);
     const radius = ringLayout.radii[ringIndex];
-    const angleStep = (2 * Math.PI) / ringFriends.length;
     
-    ringFriends.forEach((friend, index) => {
-      const angle = index * angleStep;
+    // If only one friend on this ring, place them randomly
+    if (ringFriends.length === 1) {
+      const angle = Math.random() * 2 * Math.PI;
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
       
       positions.push({
-        id: friend.id,
+        id: ringFriends[0].id,
         x,
         y,
         ring: ringIndex,
         angle
       });
-    });
+    } else {
+      // Multiple friends: distribute evenly but with random starting angle
+      const angleStep = (2 * Math.PI) / ringFriends.length;
+      const randomOffset = Math.random() * 2 * Math.PI;
+      
+      ringFriends.forEach((friend, index) => {
+        const angle = (index * angleStep + randomOffset) % (2 * Math.PI);
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        positions.push({
+          id: friend.id,
+          x,
+          y,
+          ring: ringIndex,
+          angle
+        });
+      });
+    }
   });
 
   return positions;

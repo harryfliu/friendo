@@ -66,6 +66,35 @@ export function OrbitVisualization({
         className="w-full h-full orbit-container"
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
       >
+        <defs>
+          {/* Super cool animated gradient for the user icon */}
+          <radialGradient id="userGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#8b5cf6">
+              <animate attributeName="stop-color" 
+                values="#8b5cf6;#a855f7;#c084fc;#e879f9;#f59e0b;#ef4444;#8b5cf6" 
+                dur="8s" 
+                repeatCount="indefinite" />
+            </stop>
+            <stop offset="30%" stopColor="#a855f7">
+              <animate attributeName="stop-color" 
+                values="#a855f7;#c084fc;#e879f9;#f59e0b;#ef4444;#8b5cf6;#a855f7" 
+                dur="8s" 
+                repeatCount="indefinite" />
+            </stop>
+            <stop offset="60%" stopColor="#c084fc">
+              <animate attributeName="stop-color" 
+                values="#c084fc;#e879f9;#f59e0b;#ef4444;#8b5cf6;#a855f7;#c084fc" 
+                dur="8s" 
+                repeatCount="indefinite" />
+            </stop>
+            <stop offset="100%" stopColor="#e879f9">
+              <animate attributeName="stop-color" 
+                values="#e879f9;#f59e0b;#ef4444;#8b5cf6;#a855f7;#c084fc;#e879f9" 
+                dur="8s" 
+                repeatCount="indefinite" />
+            </stop>
+          </radialGradient>
+        </defs>
         <g className="orbit-group">
           {/* Render rings */}
           {ringLayout.radii.map((radius, index) => (
@@ -85,13 +114,148 @@ export function OrbitVisualization({
             />
           ))}
 
+          {/* Center user icon - super cool animated version */}
+          <motion.g
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            style={{ pointerEvents: 'none' }}
+          >
+            {/* Outer glow ring */}
+            <motion.circle
+              cx={centerX}
+              cy={centerY}
+              r="20"
+              fill="none"
+              stroke="url(#userGradient)"
+              strokeWidth="1.5"
+              opacity="0.5"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ 
+                scale: [0, 1.2, 1],
+                opacity: [0, 0.6, 0.5]
+              }}
+              transition={{ 
+                duration: 1.5, 
+                ease: "easeOut",
+                delay: 0.3
+              }}
+            />
+            
+            {/* Pulsing inner ring */}
+            <motion.circle
+              cx={centerX}
+              cy={centerY}
+              r="15"
+              fill="none"
+              stroke="url(#userGradient)"
+              strokeWidth="1"
+              opacity="0.3"
+              animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.6, 0.3]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+            
+            {/* Main user icon - animated diamond/star */}
+            <motion.g
+              animate={{ 
+                rotate: [0, 360],
+                scale: [1, 1.05, 1]
+              }}
+              transition={{ 
+                rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+                scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+              }}
+            >
+              {/* Circle shape */}
+              <motion.circle
+                cx={centerX}
+                cy={centerY}
+                r="12"
+                fill="url(#userGradient)"
+                stroke="url(#userGradient)"
+                strokeWidth="0.5"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
+              />
+              
+              {/* Inner sparkle */}
+              <motion.circle
+                cx={centerX}
+                cy={centerY}
+                r="3"
+                fill="white"
+                opacity="0.8"
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  opacity: [0.8, 1, 0.8]
+                }}
+                transition={{ 
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+            </motion.g>
+            
+            {/* Floating particles around the center */}
+            {Array.from({ length: 4 }, (_, i) => {
+              const angle = (i * Math.PI) / 2
+              const radius = 25
+              const x = centerX + radius * Math.cos(angle)
+              const y = centerY + radius * Math.sin(angle)
+              
+              return (
+                <motion.circle
+                  key={i}
+                  cx={x}
+                  cy={y}
+                  r="1.5"
+                  fill="url(#userGradient)"
+                  opacity="0.6"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ 
+                    scale: [0, 1, 0.8, 1],
+                    opacity: [0, 0.6, 0.3, 0.6]
+                  }}
+                  transition={{ 
+                    duration: 2 + i * 0.2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * 0.1
+                  }}
+                >
+                  <animate attributeName="fill" 
+                    values="url(#userGradient);#f59e0b;#ef4444;#22c55e;#3b82f6;url(#userGradient)" 
+                    dur="6s" 
+                    repeatCount="indefinite" 
+                    begin={`${i * 0.5}s`} />
+                </motion.circle>
+              )
+            })}
+          </motion.g>
+
           {/* Render friends */}
           {friends.map((friend) => (
             <FriendIcon
               key={friend.id}
               friend={friend}
               isSelected={selectedFriend?.id === friend.id}
-              onClick={() => onFriendSelect(friend)}
+              onClick={() => {
+                console.log('🔍 Clicking friend:', { 
+                  name: friend.name, 
+                  closeness: friend.closeness,
+                  id: friend.id 
+                })
+                onFriendSelect(friend)
+              }}
             />
           ))}
         </g>

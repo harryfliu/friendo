@@ -84,7 +84,21 @@ export default function HomePage() {
     if (typeof window === 'undefined') return
     
     const hasLoadedDemo = localStorage.getItem('friendo-demo-loaded')
-    if (friends.length === 0 && !hasLoadedDemo) {
+    const hasBeenReset = localStorage.getItem('friendo-has-been-reset')
+    
+    console.log('🔍 Demo loading check:', { 
+      friendsLength: friends.length, 
+      hasLoadedDemo, 
+      hasBeenReset,
+      shouldLoad: friends.length === 0 && !hasLoadedDemo && !hasBeenReset
+    })
+    
+    // Only load demo data if:
+    // 1. No friends
+    // 2. Demo hasn't been loaded before
+    // 3. User hasn't manually reset (which would set hasBeenReset flag)
+    if (friends.length === 0 && !hasLoadedDemo && !hasBeenReset) {
+      console.log('📦 Loading demo data...')
       const demoFriends: Friend[] = [
         { id: '1', userId: 'user1', name: 'Alice', closeness: 9.5, iconKey: 'star12-red', createdAt: new Date() },
         { id: '2', userId: 'user1', name: 'Bob', closeness: 7.2, iconKey: 'star8-orange', createdAt: new Date() },
@@ -94,8 +108,9 @@ export default function HomePage() {
       ]
       useOrbitStore.getState().setFriends(demoFriends)
       localStorage.setItem('friendo-demo-loaded', 'true')
+      console.log('✅ Demo data loaded and flag set')
     }
-  }, [friends.length])
+  }, [friends.length, isResetting])
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
@@ -160,6 +175,7 @@ export default function HomePage() {
           <FriendCard 
             friend={selectedFriend}
             onClose={() => selectFriend(null)}
+            friendsCount={friends.length}
           />
         )}
 
