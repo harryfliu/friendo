@@ -31,20 +31,48 @@ A mobile-first web app that visualizes your social closeness as a living orbit m
 - npm or yarn
 - PostgreSQL database (or Supabase account)
 
-### Installation
+### Quick Setup
 
-1. Clone the repository:
 ```bash
-git clone <repository-url>
+# Clone the repository
+git clone https://github.com/harryfliu/friendo.git
+cd friendo
+
+# Install all dependencies (this creates node_modules/)
+npm install
+
+# Start development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Why `npm install` is Required
+
+When you clone this repository, you get all the source code but **not** the `node_modules/` folder. This is intentional because:
+
+- **`node_modules/` is huge** (hundreds of MB)
+- **Platform-specific** (different for Windows/Mac/Linux) 
+- **Regenerated easily** from `package.json` and `package-lock.json`
+- **GitHub has file size limits** (100MB per file)
+
+The `package-lock.json` file ensures everyone gets the **exact same versions** of dependencies across all machines.
+
+### Detailed Installation
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/harryfliu/friendo.git
 cd friendo
 ```
 
-2. Install dependencies:
+2. **Install dependencies:**
 ```bash
 npm install
 ```
+> **Note:** This creates the `node_modules/` folder with all required packages. This step is required on every new machine.
 
-3. Set up environment variables:
+3. **Set up environment variables:**
 ```bash
 cp .env.example .env.local
 ```
