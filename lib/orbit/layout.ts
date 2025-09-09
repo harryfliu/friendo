@@ -11,6 +11,18 @@ export function computeRings(
     return { radii: [], thresholds: [] };
   }
 
+  // Special case for single friend - place them in the innermost ring
+  if (scores.length === 1) {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const maxRadius = Math.min(centerX, centerY) - 40;
+    
+    return {
+      radii: [28], // Small radius for innermost ring
+      thresholds: [10.0], // High threshold so they get placed in this ring
+    };
+  }
+
   const minRings = 10;
   const maxRings = 20;
   const intervalSize = 0.5;
@@ -25,7 +37,11 @@ export function computeRings(
 
   // Quantile-based adaptive spacing
   const sortedScores = [...scores].sort((a, b) => a - b);
-  const quantiles = [0.1, 0.3, 0.5, 0.7, 0.9].map(p => d3.quantile(sortedScores, p) as number);
+  const quantiles = [0.1, 0.3, 0.5, 0.7, 0.9].map(p => {
+    const quantile = d3.quantile(sortedScores, p);
+    // Fallback to the single score if quantile is undefined (single data point)
+    return quantile !== undefined ? quantile : sortedScores[0];
+  });
   
   // Smooth thresholds with alpha=0.28
   const alpha = 0.28;
@@ -68,12 +84,14 @@ export function computeFriendPositions(
   const centerX = width / 2;
   const centerY = height / 2;
   
+  
   // Group friends by ring
   const friendsByRing: { [ringIndex: number]: Array<{ closeness: number; id: string }> } = {};
   
   friends.forEach(friend => {
     const ringIndex = ringLayout.thresholds.findIndex(threshold => friend.closeness <= threshold);
     const actualRing = ringIndex === -1 ? ringLayout.thresholds.length - 1 : ringIndex;
+    
     
     if (!friendsByRing[actualRing]) {
       friendsByRing[actualRing] = [];

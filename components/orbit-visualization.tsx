@@ -12,34 +12,17 @@ interface OrbitVisualizationProps {
   friends: FriendWithPosition[]
   ringLayout: RingLayout | null
   onFriendSelect: (friend: FriendWithPosition) => void
+  dimensions: { width: number; height: number }
 }
 
 export function OrbitVisualization({ 
   friends, 
   ringLayout, 
-  onFriendSelect 
+  onFriendSelect,
+  dimensions
 }: OrbitVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const { selectedFriend } = useOrbitStore()
-
-  // Update dimensions on resize
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (svgRef.current) {
-        const rect = svgRef.current.getBoundingClientRect()
-        setDimensions({ width: rect.width, height: rect.height })
-      } else {
-        // Fallback to window dimensions if SVG not ready
-        setDimensions({ width: window.innerWidth, height: window.innerHeight })
-      }
-    }
-
-    // Set initial dimensions immediately
-    updateDimensions()
-    window.addEventListener('resize', updateDimensions)
-    return () => window.removeEventListener('resize', updateDimensions)
-  }, [])
 
   // Set up D3 zoom behavior
   useEffect(() => {
@@ -74,6 +57,7 @@ export function OrbitVisualization({
 
   const centerX = dimensions.width / 2
   const centerY = dimensions.height / 2
+  
 
   return (
     <div className="w-full h-full relative">

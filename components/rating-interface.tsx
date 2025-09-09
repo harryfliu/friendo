@@ -30,7 +30,9 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
 
   // Initialize rating process
   useEffect(() => {
-    const sortedFriends = [...friends].sort((a, b) => b.closeness - a.closeness)
+    // Filter out the candidate from friends to avoid self-comparison
+    const existingFriends = friends.filter(friend => friend.id !== candidate.id)
+    const sortedFriends = [...existingFriends].sort((a, b) => b.closeness - a.closeness)
     const max = Math.min(Math.ceil(Math.log2(sortedFriends.length)) + 1, 9)
     setMaxComparisons(max)
     updateRatingProgress(0, max)
@@ -38,7 +40,7 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
     if (sortedFriends.length > 0) {
       setCurrentPivot(sortedFriends[Math.floor(sortedFriends.length / 2)])
     }
-  }, [friends, updateRatingProgress])
+  }, [friends, candidate.id, updateRatingProgress])
 
   const handleComparison = async (result: -1 | 1) => {
     if (!currentPivot || isProcessing) return
@@ -48,7 +50,9 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
     updateRatingProgress(comparisons + 1, maxComparisons)
 
     try {
-      const sortedFriends = [...friends].sort((a, b) => b.closeness - a.closeness)
+      // Filter out the candidate from friends to avoid self-comparison
+      const existingFriends = friends.filter(friend => friend.id !== candidate.id)
+      const sortedFriends = [...existingFriends].sort((a, b) => b.closeness - a.closeness)
       const { newSorted } = await insertWithComparisons({
         sorted: sortedFriends,
         candidate,
@@ -59,7 +63,9 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
         maxComparisons,
       })
 
-      setFriends(newSorted)
+      // Add the candidate back to the sorted list
+      const finalFriends = [...newSorted, candidate]
+      setFriends(finalFriends)
       
       // Move to next comparison or finish
       if (comparisons + 1 < maxComparisons) {
@@ -144,11 +150,12 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
         <div className="space-y-4">
           {/* Candidate card */}
           <motion.div
-            className="rating-card rounded-lg p-4 border-2 border-primary"
+            className="rating-card rounded-lg p-4 border-2 border-primary cursor-pointer"
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             onDrag={handleSwipeMove}
             onDragEnd={handleSwipe}
+            onClick={() => handleComparison(1)}
             style={{
               '--swipe-x': `${swipeOffset}px`,
             } as React.CSSProperties}
@@ -170,7 +177,8 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
 
           {/* Pivot card */}
           <motion.div
-            className="rating-card rounded-lg p-4 border-2 border-secondary"
+            className="rating-card rounded-lg p-4 border-2 border-secondary cursor-pointer"
+            onClick={() => handleComparison(-1)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >

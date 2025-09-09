@@ -124,41 +124,42 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
     }
   }
 
+
+
   return (
-    <motion.g
-      className={`friend-icon ${isSelected ? 'selected' : ''}`}
-      style={{
-        transform: `translate(${friend.position.x}px, ${friend.position.y}px)`,
-      }}
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{ 
-        opacity: 1, 
-        scale: isSelected ? 1.2 : 1,
-      }}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{
-        type: "spring",
-        stiffness: ANIMATION_CONFIG.spring.stiffness,
-        damping: ANIMATION_CONFIG.spring.damping,
-        mass: ANIMATION_CONFIG.spring.mass,
-      }}
-      onClick={onClick}
-    >
-      {getIconElement()}
-      
-      {/* Friend name label */}
-      <motion.text
-        x="0"
-        y={iconConfig.size / 2 + 16}
-        textAnchor="middle"
-        className="text-xs font-medium fill-foreground"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isSelected ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
+    <g transform={`translate(${friend.position.x}, ${friend.position.y})`}>
+      <motion.g
+        className={`friend-icon ${isSelected ? 'selected' : ''}`}
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ 
+          opacity: 1, 
+          scale: isSelected ? 1.2 : 1,
+        }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{
+          type: "spring",
+          stiffness: ANIMATION_CONFIG.spring.stiffness,
+          damping: ANIMATION_CONFIG.spring.damping,
+          mass: ANIMATION_CONFIG.spring.mass,
+        }}
+        onClick={onClick}
       >
-        {friend.name}
-      </motion.text>
-    </motion.g>
+        {getIconElement()}
+        
+        {/* Friend name label */}
+        <motion.text
+          x="0"
+          y={iconConfig.size / 2 + 16}
+          textAnchor="middle"
+          className="text-xs font-medium fill-foreground"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isSelected ? 1 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {friend.name}
+        </motion.text>
+      </motion.g>
+    </g>
   )
 }

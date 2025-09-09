@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import type { Friend, RingLayout, FriendWithPosition, ThemeConfig, AnimationConfig } from './types';
 
 interface OrbitState {
@@ -14,6 +14,7 @@ interface OrbitState {
   currentCandidate: Friend | null;
   ratingProgress: { current: number; total: number };
   isResetting: boolean;
+  isAddFriendFormOpen: boolean;
   
   // Theme & Animation
   theme: 'light' | 'dark';
@@ -34,6 +35,9 @@ interface OrbitState {
   endRating: () => void;
   updateRatingProgress: (current: number, total: number) => void;
   
+  showAddFriendForm: () => void;
+  hideAddFriendForm: () => void;
+  
   toggleTheme: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   
@@ -51,7 +55,8 @@ const defaultAnimationConfig: AnimationConfig = {
 
 export const useOrbitStore = create<OrbitState>()(
   devtools(
-    (set, get) => ({
+    persist(
+      (set, get) => ({
       // Initial state
       friends: [],
       ringLayout: null,
@@ -61,6 +66,7 @@ export const useOrbitStore = create<OrbitState>()(
       currentCandidate: null,
       ratingProgress: { current: 0, total: 0 },
       isResetting: false,
+      isAddFriendFormOpen: false,
       theme: 'light',
       animationConfig: defaultAnimationConfig,
 
@@ -89,6 +95,9 @@ export const useOrbitStore = create<OrbitState>()(
           isResetting: true
         }))
         
+        // Clear the persisted data from localStorage
+        localStorage.removeItem('orbit-store')
+        
         // Clear the resetting state after a short delay
         setTimeout(() => {
           set({ isResetting: false })
@@ -116,6 +125,9 @@ export const useOrbitStore = create<OrbitState>()(
         ratingProgress: { current, total }
       }),
       
+      showAddFriendForm: () => set({ isAddFriendFormOpen: true }),
+      hideAddFriendForm: () => set({ isAddFriendFormOpen: false }),
+      
       toggleTheme: () => set((state) => ({
         theme: state.theme === 'light' ? 'dark' : 'light'
       })),
@@ -130,9 +142,17 @@ export const useOrbitStore = create<OrbitState>()(
       
       getFriendsByRing: (ringIndex) => {
         const state = get();
-        return state.friendPositions.filter(f => f.ring === ringIndex);
+        return state.friendPositions.filter(f => f.position.ring === ringIndex);
       }
-    }),
+      }),
+      {
+        name: 'orbit-store',
+        partialize: (state) => ({ 
+          friends: state.friends,
+          theme: state.theme 
+        }),
+      }
+    ),
     {
       name: 'orbit-store',
     }

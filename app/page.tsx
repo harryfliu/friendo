@@ -5,6 +5,7 @@ import { useOrbitStore } from '@/lib/store'
 import { OrbitVisualization } from '@/components/orbit-visualization'
 import { RatingInterface } from '@/components/rating-interface'
 import { FriendCard } from '@/components/friend-card'
+import { AddFriendForm } from '@/components/add-friend-form'
 import { Header } from '@/components/header'
 import { Button } from '@/components/ui/button'
 import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts'
@@ -21,11 +22,15 @@ export default function HomePage() {
     isRating,
     currentCandidate,
     isResetting,
+    isAddFriendFormOpen,
     theme,
     setRingLayout,
     setFriendPositions,
     selectFriend,
+    hideAddFriendForm,
+    showAddFriendForm,
   } = useOrbitStore()
+
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
@@ -119,18 +124,7 @@ export default function HomePage() {
                     start building your social orbit by adding your first friend
                   </p>
                   <div className="space-y-2">
-                    <Button onClick={() => {
-                      const newFriend = {
-                        id: Math.random().toString(36).substr(2, 9),
-                        userId: 'user1',
-                        name: 'Your First Friend',
-                        closeness: 5.0,
-                        iconKey: 'hexagon-green',
-                        createdAt: new Date(),
-                      }
-                      useOrbitStore.getState().addFriend(newFriend)
-                      useOrbitStore.getState().startRating(newFriend)
-                    }}>
+                    <Button onClick={showAddFriendForm}>
                       add your first friend
                     </Button>
                     <Button 
@@ -157,6 +151,7 @@ export default function HomePage() {
               friends={friendPositions}
               ringLayout={ringLayout}
               onFriendSelect={selectFriend}
+              dimensions={dimensions}
             />
           )}
         </main>
@@ -166,6 +161,10 @@ export default function HomePage() {
             friend={selectedFriend}
             onClose={() => selectFriend(null)}
           />
+        )}
+
+        {isAddFriendFormOpen && (
+          <AddFriendForm onCancel={hideAddFriendForm} />
         )}
       </div>
     </div>

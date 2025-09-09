@@ -6,20 +6,10 @@ import { ResetDialog } from '@/components/reset-dialog'
 import { Moon, Sun, Plus, Settings } from 'lucide-react'
 
 export function Header() {
-  const { theme, toggleTheme, friends, startRating, resetFriends } = useOrbitStore()
+  const { theme, toggleTheme, friends, resetFriends, showAddFriendForm } = useOrbitStore()
 
   const handleAddFriend = () => {
-    const newFriend = {
-      id: Math.random().toString(36).substr(2, 9),
-      userId: 'user1',
-      name: `Friend ${friends.length + 1}`,
-      closeness: 5.0,
-      iconKey: 'hexagon-green',
-      createdAt: new Date(),
-    }
-    
-    useOrbitStore.getState().addFriend(newFriend)
-    startRating(newFriend)
+    showAddFriendForm()
   }
 
   const handleReset = () => {

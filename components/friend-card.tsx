@@ -77,7 +77,7 @@ export function FriendCard({ friend, onClose }: FriendCardProps) {
             <div className="flex items-center space-x-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span className="text-sm">
-                added {friend.createdAt.toLocaleDateString()}
+                added {new Date(friend.createdAt).toLocaleDateString()}
               </span>
             </div>
 
