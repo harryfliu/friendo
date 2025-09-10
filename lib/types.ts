@@ -7,6 +7,10 @@ export interface Friend {
   city?: string;
   state?: string;
   country?: string;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
   createdAt: Date;
 }
 

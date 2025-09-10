@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { X, User, MapPin } from 'lucide-react'
+import { X, User, MapPin, Loader2 } from 'lucide-react'
 import type { Friend } from '@/lib/types'
+import { geocodeAddress } from '@/lib/geocoding'
 
 interface AddFriendFormProps {
   onCancel: () => void
@@ -23,14 +24,46 @@ export function AddFriendForm({ onCancel }: AddFriendFormProps) {
     country: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGeocoding, setIsGeocoding] = useState(false)
+  const [geocodingError, setGeocodingError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim()) return
 
     setIsSubmitting(true)
+    setIsGeocoding(false)
+    setGeocodingError(null)
     
     try {
+      // Geocode address if location data is provided
+      let coordinates: { lat: number; lng: number } | undefined = undefined
+      
+      if (formData.city.trim() || formData.state.trim() || formData.country.trim()) {
+        setIsGeocoding(true)
+        console.log('🌍 Geocoding address for friend:', formData.name)
+        
+        const geocodingResult = await geocodeAddress(
+          formData.city.trim() || undefined,
+          formData.state.trim() || undefined,
+          formData.country.trim() || undefined
+        )
+        
+        if ('error' in geocodingResult) {
+          console.warn('⚠️ Geocoding failed:', geocodingResult.message)
+          setGeocodingError(`Location not found: ${geocodingResult.message}`)
+          // Continue without coordinates
+        } else {
+          coordinates = {
+            lat: geocodingResult.lat,
+            lng: geocodingResult.lng
+          }
+          console.log('✅ Geocoding successful:', geocodingResult.display_name)
+        }
+        
+        setIsGeocoding(false)
+      }
+
       // Create the new friend
       const isFirstFriend = friends.length === 0
       const newFriend: Friend = {
@@ -42,6 +75,7 @@ export function AddFriendForm({ onCancel }: AddFriendFormProps) {
         city: formData.city.trim() || undefined,
         state: formData.state.trim() || undefined,
         country: formData.country.trim() || undefined,
+        coordinates,
         createdAt: new Date(),
       }
 
@@ -157,6 +191,21 @@ export function AddFriendForm({ onCancel }: AddFriendFormProps) {
                 </div>
               </div>
 
+              {/* Geocoding status */}
+              {isGeocoding && (
+                <div className="flex items-center space-x-2 text-sm text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Finding location...</span>
+                </div>
+              )}
+
+              {/* Geocoding error */}
+              {geocodingError && (
+                <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded border border-orange-200">
+                  <span>⚠️ {geocodingError}</span>
+                </div>
+              )}
+
               {/* Action buttons */}
               <div className="flex space-x-2 pt-4">
                 <Button
@@ -171,9 +220,18 @@ export function AddFriendForm({ onCancel }: AddFriendFormProps) {
                 <Button
                   type="submit"
                   className="flex-1"
-                  disabled={!formData.name.trim() || isSubmitting}
+                  disabled={!formData.name.trim() || isSubmitting || isGeocoding}
                 >
-                  {isSubmitting ? 'adding...' : 'add friend'}
+                  {isGeocoding ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      finding location...
+                    </>
+                  ) : isSubmitting ? (
+                    'adding...'
+                  ) : (
+                    'add friend'
+                  )}
                 </Button>
               </div>
             </form>

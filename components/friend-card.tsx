@@ -14,7 +14,7 @@ function getIconExplanation(closeness: number): string {
   if (closeness < 2) return 'Blue dot - Very distant';
   if (closeness < 4) return 'Teal square - Distant';
   if (closeness < 6) return 'Green hexagon - Moderate';
-  if (closeness < 7.5) return 'Yellow flower - Close';
+  if (closeness < 7.5) return 'Yellow diamond - Close';
   if (closeness < 9) return 'Orange star - Very close';
   return 'Red star - Closest';
 }
@@ -38,7 +38,7 @@ function FriendIconPreview({ iconKey }: { iconKey: string }) {
       {shape === 'dot' && <circle cx="16" cy="16" r="8" fill={fillColor} />}
       {shape === 'square' && <rect x="8" y="8" width="16" height="16" fill={fillColor} />}
       {shape === 'hexagon' && <polygon points="16,4 24,8 24,16 16,20 8,16 8,8" fill={fillColor} />}
-      {shape === 'flower' && <circle cx="16" cy="16" r="6" fill={fillColor} />}
+      {shape === 'diamond' && <polygon points="16,4 24,16 16,28 8,16" fill={fillColor} />}
       {shape === 'star8' && <polygon points="16,4 20,12 28,12 22,18 24,26 16,22 8,26 10,18 4,12 12,12" fill={fillColor} />}
       {shape === 'star12' && <polygon points="16,2 20,8 26,8 22,14 24,20 16,16 8,20 10,14 6,8 12,8" fill={fillColor} />}
     </svg>

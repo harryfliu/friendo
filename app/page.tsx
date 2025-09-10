@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useOrbitStore } from '@/lib/store'
 import { OrbitVisualization } from '@/components/orbit-visualization'
+import USMap from '@/components/us-map'
 import { RatingInterface } from '@/components/rating-interface'
 import { FriendCard } from '@/components/friend-card'
 import { AddFriendForm } from '@/components/add-friend-form'
@@ -23,7 +24,9 @@ export default function HomePage() {
     currentCandidate,
     isResetting,
     isAddFriendFormOpen,
+    currentView,
     theme,
+    isDemoMode,
     setRingLayout,
     setFriendPositions,
     selectFriend,
@@ -94,23 +97,86 @@ export default function HomePage() {
     })
     
     // Only load demo data if:
-    // 1. No friends
-    // 2. Demo hasn't been loaded before
-    // 3. User hasn't manually reset (which would set hasBeenReset flag)
-    if (friends.length === 0 && !hasLoadedDemo && !hasBeenReset) {
+    // 1. Demo mode is enabled
+    // 2. No friends currently loaded
+    // 3. Demo hasn't been loaded before (or demo mode was just enabled)
+    if (isDemoMode && friends.length === 0 && !hasLoadedDemo) {
       console.log('📦 Loading demo data...')
       const demoFriends: Friend[] = [
-        { id: '1', userId: 'user1', name: 'Alice', closeness: 9.5, iconKey: 'star12-red', createdAt: new Date() },
-        { id: '2', userId: 'user1', name: 'Bob', closeness: 7.2, iconKey: 'star8-orange', createdAt: new Date() },
-        { id: '3', userId: 'user1', name: 'Charlie', closeness: 5.8, iconKey: 'hexagon-green', createdAt: new Date() },
-        { id: '4', userId: 'user1', name: 'Diana', closeness: 3.1, iconKey: 'square-teal', createdAt: new Date() },
-        { id: '5', userId: 'user1', name: 'Eve', closeness: 1.2, iconKey: 'dot-blue', createdAt: new Date() },
+        { 
+          id: '1', 
+          userId: 'user1', 
+          name: 'Alice', 
+          closeness: 9.5, 
+          iconKey: 'star12-red', 
+          city: 'San Francisco',
+          state: 'CA',
+          country: 'USA',
+          coordinates: { lat: 37.7749, lng: -122.4194 },
+          createdAt: new Date() 
+        },
+        { 
+          id: '2', 
+          userId: 'user1', 
+          name: 'Bob', 
+          closeness: 7.2, 
+          iconKey: 'star8-orange', 
+          city: 'New York',
+          state: 'NY',
+          country: 'USA',
+          coordinates: { lat: 40.7128, lng: -74.0060 },
+          createdAt: new Date() 
+        },
+        { 
+          id: '3', 
+          userId: 'user1', 
+          name: 'Charlie', 
+          closeness: 5.8, 
+          iconKey: 'hexagon-green', 
+          city: 'Los Angeles',
+          state: 'CA',
+          country: 'USA',
+          coordinates: { lat: 34.0522, lng: -118.2437 },
+          createdAt: new Date() 
+        },
+        { 
+          id: '4', 
+          userId: 'user1', 
+          name: 'Diana', 
+          closeness: 3.1, 
+          iconKey: 'square-teal', 
+          city: 'Chicago',
+          state: 'IL',
+          country: 'USA',
+          coordinates: { lat: 41.8781, lng: -87.6298 },
+          createdAt: new Date() 
+        },
+        { 
+          id: '5', 
+          userId: 'user1', 
+          name: 'Eve', 
+          closeness: 1.2, 
+          iconKey: 'dot-blue', 
+          city: 'Miami',
+          state: 'FL',
+          country: 'USA',
+          coordinates: { lat: 25.7617, lng: -80.1918 },
+          createdAt: new Date() 
+        },
       ]
       useOrbitStore.getState().setFriends(demoFriends)
       localStorage.setItem('friendo-demo-loaded', 'true')
       console.log('✅ Demo data loaded and flag set')
     }
-  }, [friends.length, isResetting])
+    
+    // Clear demo data if demo mode is disabled
+    if (!isDemoMode && hasLoadedDemo) {
+      console.log('🗑️ Clearing demo data...')
+      useOrbitStore.getState().setFriends([])
+      localStorage.removeItem('friendo-demo-loaded')
+      console.log('✅ Demo data cleared')
+    }
+  }, [friends.length, isResetting, isDemoMode])
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
@@ -161,6 +227,8 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+          ) : currentView === 'map' ? (
+            <USMap />
           ) : (
             <OrbitVisualization 
               friends={friendPositions}

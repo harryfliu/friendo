@@ -16,10 +16,14 @@ interface OrbitState {
   ratingProgress: { current: number; total: number };
   isResetting: boolean;
   isAddFriendFormOpen: boolean;
+  currentView: 'orbit' | 'map';
   
   // Theme & Animation
   theme: 'light' | 'dark';
   animationConfig: AnimationConfig;
+  
+  // Demo Mode
+  isDemoMode: boolean;
   
   // Actions
   setFriends: (friends: Friend[]) => void;
@@ -39,8 +43,13 @@ interface OrbitState {
   showAddFriendForm: () => void;
   hideAddFriendForm: () => void;
   
+  setCurrentView: (view: 'orbit' | 'map') => void;
+  
   toggleTheme: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
+  
+  toggleDemoMode: () => void;
+  setDemoMode: (isDemo: boolean) => void;
   
   // Computed
   getFriendById: (id: string) => Friend | undefined;
@@ -68,8 +77,10 @@ export const useOrbitStore = create<OrbitState>()(
       ratingProgress: { current: 0, total: 0 },
       isResetting: false,
       isAddFriendFormOpen: false,
+      currentView: 'orbit',
       theme: 'light',
       animationConfig: defaultAnimationConfig,
+      isDemoMode: false,
 
       // Actions
       setFriends: (friends) => set({ friends, isResetting: false }),
@@ -85,6 +96,23 @@ export const useOrbitStore = create<OrbitState>()(
       })),
       
       removeFriend: (id) => set((state) => {
+        // Find the friend being deleted to get their location data
+        const friendToDelete = state.friends.find(f => f.id === id);
+        
+        // Clear any geocoding cache entries for this friend's location
+        if (friendToDelete && typeof window !== 'undefined') {
+          const locationKey = [friendToDelete.city, friendToDelete.state, friendToDelete.country]
+            .filter(Boolean)
+            .join(', ');
+          
+          if (locationKey) {
+            // Clear geocoding cache for this specific location
+            const cacheKey = `friendo-geocode-cache-${locationKey}`;
+            localStorage.removeItem(cacheKey);
+            console.log(`🗑️ Cleared geocoding cache for deleted friend: ${friendToDelete.name} (${locationKey})`);
+          }
+        }
+        
         const remainingFriends = state.friends.filter(f => f.id !== id);
         
         // Recalculate scores for remaining friends using relative scoring
@@ -101,6 +129,8 @@ export const useOrbitStore = create<OrbitState>()(
             iconKey: generateIconKey(relativeScore)
           };
         });
+        
+        console.log(`🗑️ Completely removed friend: ${friendToDelete?.name || 'Unknown'} (ID: ${id})`);
         
         return {
           friends: friendsWithRecalculatedScores,
@@ -119,6 +149,19 @@ export const useOrbitStore = create<OrbitState>()(
         // Clear the persisted data from localStorage
         localStorage.removeItem('orbit-store')
         console.log('🗑️ Cleared orbit-store from localStorage')
+        
+        // Clear all geocoding cache entries
+        if (typeof window !== 'undefined') {
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('friendo-geocode-cache-')) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+          console.log(`🗑️ Cleared ${keysToRemove.length} geocoding cache entries`);
+        }
         
         // Clear the resetting state after a short delay
         setTimeout(() => {
@@ -151,11 +194,16 @@ export const useOrbitStore = create<OrbitState>()(
       showAddFriendForm: () => set({ isAddFriendFormOpen: true }),
       hideAddFriendForm: () => set({ isAddFriendFormOpen: false }),
       
+      setCurrentView: (view) => set({ currentView: view }),
+      
       toggleTheme: () => set((state) => ({
         theme: state.theme === 'light' ? 'dark' : 'light'
       })),
       
       setTheme: (theme) => set({ theme }),
+      
+      toggleDemoMode: () => set((state) => ({ isDemoMode: !state.isDemoMode })),
+      setDemoMode: (isDemo) => set({ isDemoMode: isDemo }),
 
       // Computed getters
       getFriendById: (id) => {
@@ -172,7 +220,8 @@ export const useOrbitStore = create<OrbitState>()(
         name: 'orbit-store',
         partialize: (state) => ({ 
           friends: state.friends,
-          theme: state.theme 
+          theme: state.theme,
+          isDemoMode: state.isDemoMode
         }),
       }
     ),

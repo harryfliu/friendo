@@ -22,7 +22,15 @@ export function OrbitVisualization({
   dimensions
 }: OrbitVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const { selectedFriend } = useOrbitStore()
+  const { selectedFriend, theme } = useOrbitStore()
+  const [ringColor, setRingColor] = useState(theme === 'dark' ? 'white' : 'currentColor')
+  const [animationKey, setAnimationKey] = useState(0)
+
+  // Update ring color when theme changes and force re-animation
+  useEffect(() => {
+    setRingColor(theme === 'dark' ? 'white' : 'currentColor')
+    setAnimationKey(prev => prev + 1) // Force re-animation
+  }, [theme])
 
   // Set up D3 zoom behavior
   useEffect(() => {
@@ -99,11 +107,17 @@ export function OrbitVisualization({
           {/* Render rings */}
           {ringLayout.radii.map((radius, index) => (
             <motion.circle
-              key={index}
+              key={`${animationKey}-${index}`}
               cx={centerX}
               cy={centerY}
               r={radius}
               className="ring"
+              style={{ 
+                stroke: ringColor,
+                fill: 'none',
+                strokeWidth: 1,
+                opacity: 0.1
+              }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 0.1, scale: 1 }}
               transition={{

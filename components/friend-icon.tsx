@@ -24,7 +24,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
     'blue': 'blue',
     'teal': 'teal', 
     'green': 'green',
-    'yellow-green': 'yellow',
+    'yellow': 'yellow',
     'orange': 'orange',
     'red': 'red'
   }
@@ -32,7 +32,7 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
   const tailwindColor = colorMap[color] || 'gray'
   
   const iconConfig = {
-    shape: shape as 'dot' | 'square' | 'hexagon' | 'flower' | 'star8' | 'star12',
+    shape: shape as 'dot' | 'square' | 'hexagon' | 'diamond' | 'star8' | 'star12',
     color: tailwindColor,
     size: Math.max(12, Math.min(24, 12 + (friend.closeness / 10) * 12))
   }
@@ -100,24 +100,12 @@ export function FriendIcon({ friend, isSelected, onClick }: FriendIconProps) {
           />
         )
       
-      case 'flower':
+      case 'diamond':
         return (
-          <g fill={fillColor}>
-            {Array.from({ length: 8 }, (_, i) => {
-              const angle = (i * Math.PI) / 4
-              const x = (size / 2) * Math.cos(angle)
-              const y = (size / 2) * Math.sin(angle)
-              return (
-                <circle
-                  key={i}
-                  cx={x}
-                  cy={y}
-                  r={size / 8}
-                />
-              )
-            })}
-            <circle cx="0" cy="0" r={size / 6} />
-          </g>
+          <polygon
+            points={`0,${-size/2} ${size/2},0 0,${size/2} ${-size/2},0`}
+            fill={fillColor}
+          />
         )
       
       case 'star8':

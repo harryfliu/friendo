@@ -19,7 +19,8 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
     friends, 
     endRating, 
     updateRatingProgress,
-    setFriends 
+    setFriends,
+    theme
   } = useOrbitStore()
   
   const [currentPivot, setCurrentPivot] = useState<Friend | null>(null)
@@ -33,7 +34,62 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
     sortedFriends: Friend[]
   } | null>(null)
 
-  const handleComparison = async (result: -1 | 1) => {
+  // Helper function to apply tie-aware relative scoring
+  const applyTieAwareScoring = (sortedFriends: Friend[]) => {
+    const friendsWithScores = [...sortedFriends]
+    
+    console.log('🔍 DEBUG: Starting tie-aware scoring with friends:', friendsWithScores.map(f => ({ name: f.name, closeness: f.closeness })))
+    
+    // Group friends by their current closeness scores (with tolerance for floating point precision)
+    const scoreGroups: { [key: string]: Friend[] } = {}
+    
+    friendsWithScores.forEach(friend => {
+      const scoreKey = friend.closeness.toFixed(2) // Round to 2 decimal places for grouping
+      if (!scoreGroups[scoreKey]) {
+        scoreGroups[scoreKey] = []
+      }
+      scoreGroups[scoreKey].push(friend)
+    })
+    
+    console.log('🔍 DEBUG: Score groups:', Object.entries(scoreGroups).map(([score, friends]) => ({
+      score: parseFloat(score),
+      friends: friends.map(f => f.name)
+    })))
+    
+    // Calculate new scores for each group
+    const sortedGroups = Object.values(scoreGroups).sort((a, b) => b[0].closeness - a[0].closeness)
+    
+    console.log('🔍 DEBUG: Sorted groups (highest to lowest):', sortedGroups.map(group => ({
+      originalScore: group[0].closeness,
+      friends: group.map(f => f.name)
+    })))
+    
+    const result: Friend[] = []
+    
+    sortedGroups.forEach((group, groupIndex) => {
+      const totalGroups = sortedGroups.length
+      const groupScore = totalGroups > 1 
+        ? (totalGroups - 1 - groupIndex) / (totalGroups - 1) * 10
+        : 10
+      
+      console.log(`🔍 DEBUG: Group ${groupIndex + 1}/${totalGroups} gets score ${groupScore.toFixed(2)}:`, group.map(f => f.name))
+      
+      // All friends in this group get the same score
+      group.forEach(friend => {
+        result.push({
+          ...friend,
+          closeness: groupScore,
+          iconKey: generateIconKey(groupScore)
+        })
+      })
+    })
+    
+    console.log('🔍 DEBUG: Final scores:', result.map(f => ({ name: f.name, closeness: f.closeness })))
+    
+    return result
+  }
+
+  const handleComparison = async (result: -1 | 0 | 1) => {
     if (!currentPivot || isProcessing || !binarySearchState) return
 
     setIsProcessing(true)
@@ -51,32 +107,68 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
       if (result < 0) {
         // candidate is less close, search right half
         newLo = mid + 1
-      } else {
+      } else if (result > 0) {
         // candidate is more close, search left half  
         newHi = mid - 1
+      } else {
+        // candidate is about the same, give them the same score as the pivot
+        const pivotScore = currentPivot.closeness
+        console.log(`🔍 DEBUG: TIE - ${candidate.name} is about the same as ${currentPivot.name} (score: ${pivotScore})`)
+        
+        const newFriend = {
+          ...candidate,
+          closeness: pivotScore,
+          iconKey: generateIconKey(pivotScore)
+        }
+        
+        // Insert the new friend at the same position as the pivot
+        const newSorted = [...sortedFriends]
+        newSorted.splice(mid, 0, newFriend)
+        
+        console.log('🔍 DEBUG: After inserting tied friend, sorted order:', newSorted.map(f => ({ name: f.name, closeness: f.closeness })))
+        
+        // Use tie-aware scoring to preserve existing ties
+        const friendsWithRelativeScores = applyTieAwareScoring(newSorted)
+        
+        setFriends(friendsWithRelativeScores)
+        endRating()
+        return
       }
 
       // Check if we're done with binary search
       if (newLo > newHi || comparisons + 1 >= maxComparisons) {
         // Insert candidate at the correct position
         const insertAt = newLo
-        const newSorted = [...sortedFriends]
-        newSorted.splice(insertAt, 0, candidate)
+        console.log(`🔍 DEBUG: Binary search complete - inserting ${candidate.name} at position ${insertAt}`)
         
-        // Apply Beli-style relative scoring: closest friend gets 10, others scale down
-        const friendsWithRelativeScores = newSorted.map((friend, index) => {
-          const totalFriends = newSorted.length
-          // Scale from 0-10 where index 0 (closest) gets 10, index n-1 (furthest) gets 0
-          const relativeScore = totalFriends > 1 
-            ? (totalFriends - 1 - index) / (totalFriends - 1) * 10
-            : 10 // If only one friend, they get 10
-          
-          return {
-            ...friend,
-            closeness: relativeScore,
-            iconKey: generateIconKey(relativeScore)
-          }
-        })
+        // Give the candidate a temporary score based on their position
+        // If inserting at the last position, make sure it's lower than the current lowest score
+        let tempScore
+        if (insertAt === sortedFriends.length) {
+          // Inserting at the end - make it significantly lower than the current lowest score
+          const currentLowest = Math.min(...sortedFriends.map(f => f.closeness))
+          tempScore = currentLowest - 0.1 // Use a significant difference to avoid grouping
+        } else {
+          // Normal position-based scoring
+          const totalFriends = sortedFriends.length + 1
+          tempScore = totalFriends > 1 
+            ? (totalFriends - 1 - insertAt) / (totalFriends - 1) * 10
+            : 10
+        }
+        
+        const candidateWithTempScore = {
+          ...candidate,
+          closeness: tempScore,
+          iconKey: generateIconKey(tempScore)
+        }
+        
+        const newSorted = [...sortedFriends]
+        newSorted.splice(insertAt, 0, candidateWithTempScore)
+        
+        console.log('🔍 DEBUG: After insertion with temp score:', newSorted.map(f => ({ name: f.name, closeness: f.closeness })))
+        
+        // Use tie-aware scoring to preserve existing ties
+        const friendsWithRelativeScores = applyTieAwareScoring(newSorted)
         
         // Update friends and finish
         setFriends(friendsWithRelativeScores)
@@ -148,6 +240,9 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
         handleComparison(-1)
       } else if (event.key === 'ArrowRight') {
         handleComparison(1)
+      } else if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault()
+        handleComparison(0) // Space or Enter = about the same
       }
     }
 
@@ -159,7 +254,7 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">rating complete!</h2>
+          <h2 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>rating complete!</h2>
           <p className="text-muted-foreground mb-4">
             {candidate.name} has been added to your orbit.
           </p>
@@ -191,13 +286,13 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
         {/* Question */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-center">
+            <CardTitle className={`text-center ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
               who are you closer to?
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground">
-              click on the friend you're closer to, or use arrow keys
+              click on the friend you're closer to, or "about the same" if they're similar
             </p>
           </CardContent>
         </Card>
@@ -215,13 +310,13 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
             transition={{ duration: 0.3 }}
           >
             <div className="text-center">
-              <h3 className="text-2xl font-bold mb-2">{candidate.name}</h3>
+              <h3 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{candidate.name}</h3>
               <p className="text-sm text-muted-foreground">new friend</p>
             </div>
           </motion.div>
 
           {/* VS divider */}
-          <div className="text-center text-muted-foreground font-bold text-lg">VS</div>
+          <div className={`text-center font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-black'}`}>VS</div>
 
           {/* Right friend - Existing */}
           <motion.div
@@ -234,7 +329,7 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
             transition={{ duration: 0.3 }}
           >
             <div className="text-center">
-              <h3 className="text-2xl font-bold mb-2">{currentPivot.name}</h3>
+              <h3 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{currentPivot.name}</h3>
               <p className="text-sm text-muted-foreground">
                 closeness: {currentPivot.closeness.toFixed(1)}
               </p>
@@ -242,6 +337,17 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
           </motion.div>
         </div>
 
+        {/* About the same button */}
+        <div className="text-center my-4">
+          <Button
+            variant="outline"
+            onClick={() => handleComparison(0)}
+            disabled={isProcessing}
+            className={`px-4 py-2 text-sm font-medium ${theme === 'dark' ? 'text-white border-white hover:bg-white hover:text-black' : 'text-black border-black hover:bg-black hover:text-white'}`}
+          >
+            about the same
+          </Button>
+        </div>
 
         {/* Cancel button */}
         <div className="text-center mt-4">
@@ -258,7 +364,7 @@ export function RatingInterface({ candidate }: RatingInterfaceProps) {
         {/* Instructions */}
         <div className="text-center mt-6 text-sm text-muted-foreground">
           <p className="hidden md:block">
-            use ← → arrow keys or click buttons
+            use ← → arrow keys, spacebar for "about the same", or click buttons
           </p>
           <p className="md:hidden">
             swipe left/right or tap buttons

@@ -79,7 +79,7 @@ export function generateIconKey(closeness: number): string {
   if (closeness < 2) return 'dot-blue';
   if (closeness < 4) return 'square-teal';
   if (closeness < 6) return 'hexagon-green';
-  if (closeness < 7.5) return 'flower-yellow-green';
+  if (closeness < 7.5) return 'diamond-yellow';
   if (closeness < 9) return 'star8-orange';
   return 'star12-red';
 }
@@ -93,7 +93,7 @@ export function getIconConfig(closeness: number) {
     'blue': 'blue',
     'teal': 'teal', 
     'green': 'green',
-    'yellow-green': 'yellow',
+    'yellow': 'yellow',
     'orange': 'orange',
     'red': 'red'
   };
@@ -101,7 +101,7 @@ export function getIconConfig(closeness: number) {
   const tailwindColor = colorMap[color] || 'gray';
   
   return {
-    shape: shape as 'dot' | 'square' | 'hexagon' | 'flower' | 'star8' | 'star12',
+    shape: shape as 'dot' | 'square' | 'hexagon' | 'diamond' | 'star8' | 'star12',
     color: tailwindColor,
     size: Math.max(12, Math.min(24, 12 + (closeness / 10) * 12)) // 12-24px based on closeness
   };
