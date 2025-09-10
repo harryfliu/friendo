@@ -28,20 +28,23 @@ export function Header() {
         ? 'bg-gray-900/80 border-gray-700' 
         : 'bg-background/80 border-border'
     }`}>
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <h1 className={`text-xl font-bold ${
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3">
+        {/* Left side - Title and navigation */}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            <h1 className={`text-lg sm:text-xl font-bold ${
               theme === 'dark' ? 'text-white' : 'text-foreground'
             }`}>friendo</h1>
-            <span className={`text-sm ${
-              theme === 'dark' ? 'text-gray-300' : 'text-muted-foreground'
+            <span className={`text-xs px-1.5 py-0.5 rounded-md ${
+              theme === 'dark' 
+                ? 'text-gray-300 bg-gray-800/50' 
+                : 'text-muted-foreground bg-gray-100'
             }`}>
               {friends.length} friends
             </span>
           </div>
           
-          {/* Navigation Tabs */}
+          {/* Navigation Tabs - Show on all screens */}
           <div className="flex items-center space-x-1">
             <Button
               variant={currentView === 'orbit' ? 'default' : 'ghost'}
@@ -55,8 +58,8 @@ export function Header() {
                   : ''
               }`}
             >
-              <Orbit className="h-4 w-4 mr-2" />
-              orbit
+              <Orbit className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">orbit</span>
             </Button>
             <Button
               variant={currentView === 'map' ? 'default' : 'ghost'}
@@ -70,13 +73,15 @@ export function Header() {
                   : ''
               }`}
             >
-              <Map className="h-4 w-4 mr-2" />
-              map
+              <Map className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">map</span>
             </Button>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        {/* Right side - Action buttons */}
+        <div className="flex items-center space-x-1 sm:space-x-2">
+          {/* Add friend button - Show text on larger screens */}
           <Button
             variant="ghost"
             size="sm"
@@ -87,19 +92,21 @@ export function Header() {
                 : ''
             }`}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            add friend
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">add friend</span>
           </Button>
 
+          {/* Reset dialog - Only show if friends exist */}
           {friends.length > 0 && (
             <ResetDialog onReset={handleReset} friendCount={friends.length} />
           )}
 
+          {/* Demo mode toggle - Hide on mobile */}
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleDemoMode}
-            className={`spring-transition ${
+            className={`spring-transition hidden sm:flex ${
               theme === 'dark' 
                 ? isDemoMode 
                   ? 'text-yellow-400 hover:bg-gray-800' 
@@ -113,6 +120,7 @@ export function Header() {
             <Play className="h-4 w-4" />
           </Button>
 
+          {/* Theme toggle */}
           <Button
             variant="ghost"
             size="sm"
@@ -130,10 +138,11 @@ export function Header() {
             )}
           </Button>
 
+          {/* Settings - Hide on mobile to save space */}
           <Button
             variant="ghost"
             size="sm"
-            className={`spring-transition ${
+            className={`spring-transition hidden sm:flex ${
               theme === 'dark' 
                 ? 'text-white hover:bg-gray-800' 
                 : ''

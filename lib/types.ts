@@ -38,7 +38,7 @@ export interface RingLayout {
 }
 
 export interface IconConfig {
-  shape: 'dot' | 'square' | 'hexagon' | 'flower' | 'star8' | 'star12';
+  shape: 'dot' | 'square' | 'hexagon' | 'diamond' | 'star8' | 'star12';
   color: string;
   size: number;
 }
